@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Central Screenshot Server</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            background: #f8f8fa;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        h1 {
+            color: #2a2a6a;
+        }
+
+        .filters {
+            margin-bottom: 24px;
+        }
+
+        .filters input,
+        .filters select {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1.5px solid #ccc;
+            margin-right: 8px;
+        }
+
+        .gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+        }
+
+        .gallery-item {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px #0001;
+            padding: 10px;
+            width: 240px;
+        }
+
+        .gallery-img {
+            width: 220px;
+            max-height: 140px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            margin-bottom: 6px;
+        }
+
+        .gallery-meta {
+            font-size: 0.95em;
+            color: #888;
+        }
+
+        .status-online {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .status-offline {
+            color: #c00;
+            font-weight: bold;
+        }
+
+        .card-anim {
+            transition: box-shadow 0.3s, border 0.3s;
+        }
+
+        .card-anim.updated {
+            box-shadow: 0 0 12px #27ae6044;
+            border: 2px solid #27ae60;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Central Screenshot Server</h1>
+        <form class="filters" method="get">
+            <input type="text" name="server_id" placeholder="Сервер" value="{{ server_id or '' }}">
+            <input type="text" name="window" placeholder="Окно" value="{{ window or '' }}">
+            <input type="text" name="device_id" placeholder="Устройство" value="{{ device_id or '' }}">
+            <input type="text" name="section" placeholder="Секция"
+                value="{{ request.query_params.get('section', '') }}">
+            <input type="text" name="text" placeholder="Поиск по имени/мета"
+                value="{{ request.query_params.get('text', '') }}">
+            <input type="date" name="created_at_from" value="{{ request.query_params.get('created_at_from', '') }}"
+                title="Скрины с даты">
+            <input type="date" name="created_at_to" value="{{ request.query_params.get('created_at_to', '') }}"
+                title="Скрины до даты">
+            <button type="submit">Фильтр</button>
+            <a href="/" style="margin-left:12px;">Сбросить</a>
+        </form>
+        <div style="color:#888;font-size:0.95em;margin-bottom:12px;">
+            Можно фильтровать по имени файла, метаданным, дате создания, секции.<br>
+            Пример: "error" — покажет все скрины с ошибками в имени или мета.
+        </div>
+        <div style="margin-bottom:16px;">
+            <a href="#" id="export-csv" class="btn" style="margin-right:8px;">Экспорт CSV</a>
+            <a href="#" id="export-zip" class="btn">Экспорт ZIP</a>
+            <span style="color:#888;font-size:0.95em;margin-left:12px;">Экспортирует только отфильтрованные
+                скрины</span>
+        </div>
+        {% set sections = {} %}
+        {% for s in screenshots %}
+        {% set section = s.window %} {# Можно заменить на s.meta.section, если есть #}
+        {% if section not in sections %}
+        {% set _ = sections.update({section: []}) %}
+        {% endif %}
+        {% set _ = sections[section].append(s) %}
+        {% endfor %}
+
+        {% for section, items in sections.items() %}
+        <div style="margin-bottom:32px;">
+            <h2>Секция: {{ section }}</h2>
+            <div class="gallery">
+                {% set last_devices = {} %}
+                {% for s in items %}
+                {% set key = s.server_id ~ '|' ~ s.window ~ '|' ~ s.device_id %}
+                {% if key not in last_devices %}
+                {% set _ = last_devices.update({key: 1}) %}
+                {% set last_time = s.created_at %}
+                {% set status = 'offline' %}
+                {% if now and last_time and now[:13] == last_time[:13] %}
+                {% set status = 'online' %}
+                {% endif %}
+                <div class="gallery-item card-anim" data-key="{{ key }}">
+                    <a href="/download_last/{{ s.server_id }}/{{ s.window }}/{{ s.device_id }}" target="_blank">
+                        <img src="/download_last/{{ s.server_id }}/{{ s.window }}/{{ s.device_id }}?ts={{ s.created_at|replace(' ','_') }}"
+                            class="gallery-img" alt="last.png">
+                    </a>
+                    <div class="gallery-meta">
+                        <b>Сервер:</b> {{ s.server_id }}<br>
+                        <b>Окно:</b> {{ s.window }}<br>
+                        <b>Устройство:</b> {{ s.device_id }}<br>
+                        <b>Статус:</b> <span class="status-{{ status }}">{{ status|capitalize }}</span><br>
+                        <b>Время:</b> <span class="last-time">{{ s.created_at }}</span><br>
+                        <a href="/download_last/{{ s.server_id }}/{{ s.window }}/{{ s.device_id }}"
+                            target="_blank">Скачать last.png</a> |
+                        <a href="/screenshots?server_id={{ s.server_id }}&window={{ s.window }}&device_id={{ s.device_id }}"
+                            target="_blank">История</a>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        {% if not screenshots %}
+        <div style="color:#888;margin-top:32px;">Нет скринов по выбранным фильтрам.</div>
+        {% endif %}
+    </div>
+    <script>
+        (function () {
+            function buildExportUrl(format) {
+                const params = new URLSearchParams(window.location.search);
+                params.set('format', format);
+                return '/export/screenshots?' + params.toString();
+            }
+            document.getElementById('export-csv').href = buildExportUrl('csv');
+            document.getElementById('export-zip').href = buildExportUrl('zip');
+        })();
+
+        // Автообновление last.png раз в 30 сек
+        setInterval(function () {
+            document.querySelectorAll('.gallery-item').forEach(function (card) {
+                var img = card.querySelector('img');
+                if (img) {
+                    var src = img.src.replace(/([?&])ts=[^&]+/, '$1ts=' + Date.now());
+                    img.src = src;
+                    card.classList.add('updated');
+                    setTimeout(function () { card.classList.remove('updated'); }, 800);
+                }
+            });
+        }, 30000);
+    </script>
+</body>
+
+</html>

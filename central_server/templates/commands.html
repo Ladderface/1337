@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Отправка команд — Central Screenshot Server</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body { background: #f8f8fa; font-family: Arial, sans-serif; }
+        .container { max-width: 600px; margin: 0 auto; padding: 24px; }
+        h1 { color: #2a2a6a; }
+        form { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 18px 24px; }
+        label { display: block; margin-top: 12px; margin-bottom: 4px; color: #444; }
+        select, input, textarea { width: 100%; padding: 8px 10px; border-radius: 6px; border: 1.5px solid #ccc; margin-bottom: 12px; }
+        button { padding: 8px 24px; border-radius: 6px; background: #2a2a6a; color: #fff; border: none; font-size: 1em; cursor: pointer; }
+        .msg { margin: 18px 0; color: #27ae60; font-weight: bold; }
+        .nav { margin-top: 18px; }
+        .nav a { margin-right: 18px; color: #2980b9; text-decoration: none; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Отправка команд агентам</h1>
+    {% if message %}
+    <div class="msg">{{ message }}</div>
+    {% endif %}
+    <form method="post">
+        <label for="server_id">Сервер</label>
+        <select id="server_id" name="server_id" required>
+            <option value="">Выберите сервер</option>
+            {% for s in servers %}
+            <option value="{{ s }}" {% if s==server_id %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+        <label for="device_id">Устройство</label>
+        <select id="device_id" name="device_id" required>
+            <option value="">Выберите устройство</option>
+            {% for d in devices %}
+            <option value="{{ d }}" {% if d==device_id %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+        </select>
+        <label for="command">Команда</label>
+        <select id="command" name="command" required>
+            <option value="screencap">screencap (сделать скриншот)</option>
+            <option value="echo">echo (ответить текстом)</option>
+            <option value="custom">custom (другая команда)</option>
+        </select>
+        <label for="params">Параметры (JSON, опционально)</label>
+        <textarea id="params" name="params" rows="3" placeholder='{"msg": "hello"}'></textarea>
+        <button type="submit">Отправить команду</button>
+    </form>
+    <div class="nav">
+        <a href="/">На главную</a>
+        <a href="/logs">К логам</a>
+    </div>
+</div>
+</body>
+</html> 

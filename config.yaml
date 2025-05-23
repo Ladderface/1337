@@ -1,0 +1,12 @@
+{}
+
+users:
+  - username: admin
+    api_key: testkey
+    role: admin
+  - username: user1
+    api_key: userkey
+    role: user
+  - username: guest
+    api_key: guestkey
+    role: readonly

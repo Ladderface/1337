@@ -1,0 +1,6 @@
+uvicorn
+aiofiles
+requests
+pyyaml
+opencv-python-headless
+schedule 

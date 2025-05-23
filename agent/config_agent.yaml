@@ -1,0 +1,14 @@
+server_url: "http://localhost:8000"
+api_key: "testkey"
+server_id: "server-01"
+devices:
+  - id: "127.0.0.1:5555"
+    enabled: true
+    window: "main"
+    interval: 60
+  - id: "127.0.0.1:5575"
+    enabled: true
+    window: "main"
+    interval: 60
+screenshot_dir: screenshots
+log_level: INFO 

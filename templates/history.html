@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>История скринов {{ device_id }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .gallery { display: flex; flex-wrap: wrap; gap: 18px; }
+        .gallery-item { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 10px; width: 220px; }
+        .gallery-img { width: 200px; max-height: 140px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 6px; animation: fadein 0.7s; }
+        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+        .gallery-time { font-size: 0.95em; color: #888; }
+        .back-link { display: inline-block; margin: 18px 0; color: #0077cc; text-decoration: underline; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>История скринов: {{ device_id }}</h1>
+    <a href="/monitor" class="back-link">← К мониторингу</a>
+    <div class="gallery">
+        {% for path, created_at in screenshots %}
+        <div class="gallery-item">
+            <img src="/screenshots/{{ path }}" class="gallery-img" alt="Скриншот {{ device_id }}">
+            <div class="gallery-time">{{ created_at }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+</body>
+</html> 

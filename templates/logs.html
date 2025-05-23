@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Логи</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        #logbox { background: #222; color: #eee; padding: 10px; border-radius: 6px; max-height: 500px; overflow-y: auto; font-size: 14px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Логи</h1>
+    <div id="logbox">Загрузка...</div>
+    <div style="margin-top:40px;">
+        <a href="/">На главную</a>
+    </div>
+</div>
+<script>
+    function updateLogs() {
+        let ws = new WebSocket('ws://' + window.location.host + '/ws/logs');
+        ws.onmessage = function(event) {
+            document.getElementById('logbox').textContent = event.data;
+        };
+        ws.onclose = function() {
+            setTimeout(updateLogs, 2000);
+        };
+    }
+    updateLogs();
+</script>
+</body>
+</html> 

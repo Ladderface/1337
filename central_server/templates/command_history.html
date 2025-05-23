@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>История команд — Central Screenshot Server</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body { background: #f8f8fa; font-family: Arial, sans-serif; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        h1 { color: #2a2a6a; }
+        .filters { margin-bottom: 24px; }
+        .filters input, .filters select { padding: 6px 12px; border-radius: 6px; border: 1.5px solid #ccc; margin-right: 8px; }
+        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+        th, td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+        th { background: #f0f0fa; }
+        .status-done { color: #27ae60; }
+        .status-pending { color: #e67e22; }
+        .status-error { color: #c00; font-weight: bold; }
+        .status-other { color: #888; }
+        @media (max-width: 900px) {
+            .container { padding: 8px; }
+            table, th, td { font-size: 0.95em; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>История выполнения команд</h1>
+    <form class="filters" method="get">
+        <label for="server_id">Сервер</label>
+        <select name="server_id" id="server_id" title="Сервер">
+            <option value="">Сервер</option>
+            {% for s in servers %}
+            <option value="{{ s }}" {% if s==server_id %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+        <label for="device_id">Устройство</label>
+        <select name="device_id" id="device_id" title="Устройство">
+            <option value="">Устройство</option>
+            {% for d in devices %}
+            <option value="{{ d }}" {% if d==device_id %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+        </select>
+        <label for="command">Команда</label>
+        <select name="command" id="command" title="Команда">
+            <option value="">Команда</option>
+            {% for c in commands %}
+            <option value="{{ c }}" {% if c==command %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
+        <label for="status">Статус</label>
+        <select name="status" id="status" title="Статус">
+            <option value="">Статус</option>
+            {% for st in statuses %}
+            <option value="{{ st }}" {% if st==status %}selected{% endif %}>{{ st }}</option>
+            {% endfor %}
+        </select>
+        <label for="text">Поиск</label>
+        <input type="text" name="text" id="text" placeholder="Поиск по тексту/параметрам" value="{{ text or '' }}" title="Поиск по тексту/параметрам">
+        <label for="created_at_from">С даты</label>
+        <input type="date" name="created_at_from" id="created_at_from" value="{{ created_at_from or '' }}" title="С даты">
+        <label for="created_at_to">По дату</label>
+        <input type="date" name="created_at_to" id="created_at_to" value="{{ created_at_to or '' }}" title="По дату">
+        <label for="limit">Лимит</label>
+        <input type="number" name="limit" id="limit" min="1" max="5000" value="{{ limit or 1000 }}" style="width:80px;" title="Лимит записей">
+        <button type="submit">Фильтр</button>
+        <a href="/command_history" style="margin-left:12px;">Сбросить</a>
+    </form>
+    <div style="color:#888;font-size:0.95em;margin-bottom:12px;">
+        Можно фильтровать по серверу, устройству, команде, статусу, дате, тексту.<br>
+        Экспортирует только отфильтрованные команды.
+    </div>
+    <div style="margin-bottom:16px;">
+        <a href="#" id="export-csv" class="btn" style="margin-right:8px;">Экспорт CSV</a>
+        <a href="#" id="export-xlsx" class="btn">Экспорт Excel</a>
+    </div>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Сервер</th>
+            <th>Устройство</th>
+            <th>Команда</th>
+            <th>Параметры</th>
+            <th>Статус</th>
+            <th>Время</th>
+        </tr>
+        {% for h in history %}
+        <tr>
+            <td>{{ h.id }}</td>
+            <td>{{ h.server_id }}</td>
+            <td>{{ h.device_id }}</td>
+            <td>{{ h.command }}</td>
+            <td style="max-width:220px;overflow-x:auto;white-space:pre;">{{ h.params }}</td>
+            <td class="status-{{ h.status if h.status in ['done','pending','error'] else 'other' }}">{{ h.status }}</td>
+            <td>{{ h.created_at }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% if not history %}
+    <div style="color:#888;margin-top:32px;">Нет команд по выбранным фильтрам.</div>
+    {% endif %}
+</div>
+<script>
+(function() {
+    function buildExportUrl(format) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('format', format);
+        return '/api/command_history?' + params.toString();
+    }
+    document.getElementById('export-csv').href = buildExportUrl('csv');
+    document.getElementById('export-xlsx').href = buildExportUrl('xlsx');
+})();
+</script>
+</body>
+</html> 

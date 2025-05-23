@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Аналитика и графики — Central Screenshot Server</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #f8f8fa; font-family: Arial, sans-serif; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        h1 { color: #2a2a6a; }
+        .tab-bar { display: flex; gap: 0; border-bottom: 2px solid #eee; margin-bottom: 24px; }
+        .tab-btn { background: none; border: none; padding: 14px 28px; font-size: 1.13em; color: #555; cursor: pointer; border-radius: 10px 10px 0 0; margin-right: 2px; transition: background 0.2s, color 0.2s; }
+        .tab-btn.active { background: #fff; color: #0077cc; border-bottom: 2px solid #0077cc; font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .filters { margin-bottom: 18px; }
+        .filters input, .filters select { padding: 6px 12px; border-radius: 6px; border: 1.5px solid #ccc; margin-right: 8px; }
+        .chart-block { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px #0001; padding: 18px 18px 8px 18px; margin-bottom: 28px; }
+        @media (max-width: 900px) {
+            .container { padding: 8px; }
+            .tab-btn { font-size: 1em; padding: 10px 10px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Аналитика и графики</h1>
+    <div class="tab-bar" role="tablist">
+        <button class="tab-btn active" role="tab" tabindex="0" aria-selected="true" aria-controls="tab-summary" onclick="showTab('summary')">📊 Общая статистика</button>
+        <button class="tab-btn" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-activity" onclick="showTab('activity')">📈 Активность устройств</button>
+        <button class="tab-btn" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-errors" onclick="showTab('errors')">⚠️ Ошибки и алерты</button>
+        <button class="tab-btn" role="tab" tabindex="-1" aria-selected="false" aria-controls="tab-commands" onclick="showTab('commands')">📝 Команды</button>
+    </div>
+    <form class="filters" id="analytics-filters" onsubmit="loadAllCharts();return false;">
+        <label for="server_id">Сервер</label>
+        <input type="text" name="server_id" id="server_id" placeholder="Сервер">
+        <label for="device_id">Устройство</label>
+        <input type="text" name="device_id" id="device_id" placeholder="Устройство">
+        <label for="date_from">С даты</label>
+        <input type="date" name="date_from" id="date_from">
+        <label for="date_to">По дату</label>
+        <input type="date" name="date_to" id="date_to">
+        <button type="submit">Применить</button>
+    </form>
+    <div id="tab-summary" class="tab-content active">
+        <div class="chart-block">
+            <h3>Скриншоты и логи по дням</h3>
+            <canvas id="chart-screens-logs" height="80"></canvas>
+        </div>
+        <div class="chart-block">
+            <h3>Распределение статусов команд</h3>
+            <canvas id="chart-commands-status" height="80"></canvas>
+        </div>
+    </div>
+    <div id="tab-activity" class="tab-content">
+        <div class="chart-block">
+            <h3>Активность устройств (скриншоты по устройствам)</h3>
+            <canvas id="chart-device-activity" height="80"></canvas>
+        </div>
+    </div>
+    <div id="tab-errors" class="tab-content">
+        <div class="chart-block">
+            <h3>Ошибки и алерты по дням</h3>
+            <canvas id="chart-errors" height="80"></canvas>
+        </div>
+    </div>
+    <div id="tab-commands" class="tab-content">
+        <div class="chart-block">
+            <h3>История команд (по дням)</h3>
+            <canvas id="chart-commands-history" height="80"></canvas>
+        </div>
+    </div>
+</div>
+<script>
+function showTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn=>{
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected','false');
+        btn.setAttribute('tabindex','-1');
+    });
+    document.querySelectorAll('.tab-content').forEach(tabEl=>tabEl.classList.remove('active'));
+    let btn = document.querySelector('.tab-btn[onclick*="'+tab+'"]');
+    if(btn) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected','true');
+        btn.setAttribute('tabindex','0');
+    }
+    document.getElementById('tab-'+tab).classList.add('active');
+}
+
+// --- Chart.js объекты ---
+let charts = {};
+
+function loadAllCharts() {
+    const params = new URLSearchParams(new FormData(document.getElementById('analytics-filters')));
+    fetch('/api/analytics/summary?' + params).then(r=>r.json()).then(data=>{
+        renderChart('chart-screens-logs', data.screens_logs, 'line');
+        renderChart('chart-commands-status', data.commands_status, 'doughnut');
+    });
+    fetch('/api/analytics/device_activity?' + params).then(r=>r.json()).then(data=>{
+        renderChart('chart-device-activity', data.device_activity, 'bar');
+    });
+    fetch('/api/analytics/errors?' + params).then(r=>r.json()).then(data=>{
+        renderChart('chart-errors', data.errors, 'bar');
+    });
+    fetch('/api/analytics/commands_history?' + params).then(r=>r.json()).then(data=>{
+        renderChart('chart-commands-history', data.commands_history, 'line');
+    });
+    return false;
+}
+
+function renderChart(id, chartData, type) {
+    if(!chartData) return;
+    if(charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), {
+        type: type,
+        data: chartData.data,
+        options: chartData.options || {responsive:true, plugins:{legend:{display:true}}}
+    });
+}
+
+window.onload = loadAllCharts;
+</script>
+</body>
+</html> 

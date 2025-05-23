@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Мониторинг устройств</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body { background: #f4f7fb; }
+        .device-grid { display: flex; flex-wrap: wrap; gap: 32px; justify-content: flex-start; }
+        .device-card { background: #fff; border-radius: 16px; box-shadow: 0 4px 24px #0077cc22, 0 1.5px 6px #0001; padding: 22px 18px 18px 18px; width: 340px; min-height: 340px; transition: box-shadow 0.2s, transform 0.2s; position: relative; display: flex; flex-direction: column; align-items: center; }
+        .device-card:hover { box-shadow: 0 8px 32px #0077cc33, 0 2px 8px #0002; transform: translateY(-2px) scale(1.02); }
+        .device-id { font-weight: bold; color: #2a2a6a; font-size: 1.18em; margin-bottom: 2px; letter-spacing: 0.5px; }
+        .device-status { font-size: 1.05em; margin-bottom: 10px; font-weight: 500; }
+        .device-status.online { color: #0a0; }
+        .device-status.offline { color: #c00; }
+        .device-status.running { color: #0077cc; }
+        .device-status.paused { color: orange; }
+        .device-status.stopped { color: #888; }
+        .device-screenshot { width: 100%; max-width: 290px; max-height: 180px; border-radius: 10px; border: 1.5px solid #e0e0e0; margin-bottom: 12px; transition: box-shadow 0.2s; box-shadow: 0 2px 12px #0077cc11; animation: fadein 0.7s; background: #f8f8fa; }
+        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+        .device-actions { margin-top: 8px; display: flex; gap: 12px; }
+        .history-link { font-size: 1em; color: #0077cc; text-decoration: underline; cursor: pointer; font-weight: 500; }
+        .scan-btn { background: linear-gradient(90deg,#0077cc 60%,#00bfff 100%); color: #fff; border: none; border-radius: 8px; padding: 12px 28px; font-size: 1.13em; margin-bottom: 28px; cursor: pointer; transition: background 0.2s, box-shadow 0.2s; box-shadow: 0 2px 8px #0077cc22; }
+        .scan-btn:hover { background: linear-gradient(90deg,#005fa3 60%,#00bfff 100%); box-shadow: 0 4px 16px #0077cc33; }
+        .scan-status { margin-left: 18px; font-size: 1em; color: #0077cc; }
+        .no-screenshot { height:180px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:1.1em;background:#f8f8fa;border-radius:10px;border:1.5px dashed #e0e0e0;margin-bottom:12px; }
+        @media (max-width: 900px) { .device-card { width: 98vw; min-width: 0; } .device-grid { gap: 18px; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 style="margin-bottom:18px;">Мониторинг устройств</h1>
+    <button class="scan-btn" onclick="scanAdb()">Сканировать ADB</button><span id="scan-status" class="scan-status"></span>
+    <div class="device-grid">
+        {% for dev in devices %}
+        <div class="device-card">
+            <div class="device-id">{{ dev.device_id }}</div>
+            <div class="device-status {{ dev.state }}">{{ dev.state|capitalize }}</div>
+            {% if device_screens[dev.device_id] %}
+                <img src="/screenshots/monitor/{{ device_screens[dev.device_id] }}?t={{ now() }}" class="device-screenshot" id="img-{{ dev.device_id|replace(':','_') }}" alt="Скриншот {{ dev.device_id }}">
+            {% else %}
+                <div class="no-screenshot">Нет скриншота</div>
+            {% endif %}
+            <div class="device-actions">
+                <a class="history-link" href="/history/{{ dev.device_id }}" target="_blank">История скринов</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+<script>
+function scanAdb() {
+    document.getElementById('scan-status').textContent = 'Сканирование...';
+    fetch('/scan_adb', {method:'POST'}).then(r=>r.json()).then(d=>{
+        document.getElementById('scan-status').textContent = 'Готово! Обновите страницу через 10-20 сек.';
+    });
+}
+function reloadScreens() {
+    {% for dev in devices %}
+    {% if device_screens[dev.device_id] %}
+    let img = document.getElementById('img-{{ dev.device_id|replace(":","_") }}');
+    if(img) img.src = '/screenshots/monitor/{{ device_screens[dev.device_id] }}?t=' + Date.now();
+    {% endif %}
+    {% endfor %}
+    setTimeout(reloadScreens, 30000);
+}
+window.onload = reloadScreens;
+</script>
+</body>
+</html> 

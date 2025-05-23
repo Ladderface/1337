@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Логи и сообщения — Central Screenshot Server</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body { background: #f8f8fa; font-family: Arial, sans-serif; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        h1 { color: #2a2a6a; }
+        .filters { margin-bottom: 24px; }
+        .filters input, .filters select { padding: 6px 12px; border-radius: 6px; border: 1.5px solid #ccc; margin-right: 8px; }
+        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+        th, td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+        th { background: #f0f0fa; }
+        .type-log { color: #2a2a6a; }
+        .type-error { color: #c00; font-weight: bold; }
+        .type-alert { color: #e67e22; font-weight: bold; }
+        .type-info { color: #2980b9; }
+        .type-done { color: #27ae60; }
+        .type-other { color: #888; }
+        .visually-hidden { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Логи и сообщения</h1>
+    <form class="filters" method="get">
+        <label for="server_id" class="visually-hidden">Сервер</label>
+        <input type="text" id="server_id" name="server_id" placeholder="Сервер" value="{{ server_id or '' }}">
+        <label for="device_id" class="visually-hidden">Устройство</label>
+        <input type="text" id="device_id" name="device_id" placeholder="Устройство" value="{{ device_id or '' }}">
+        <label for="type" class="visually-hidden">Тип сообщения</label>
+        <select id="type" name="type" title="Тип сообщения">
+            <option value="">Тип</option>
+            <option value="log" {% if type=='log' %}selected{% endif %}>log</option>
+            <option value="error" {% if type=='error' %}selected{% endif %}>error</option>
+            <option value="alert" {% if type=='alert' %}selected{% endif %}>alert</option>
+            <option value="info" {% if type=='info' %}selected{% endif %}>info</option>
+            <option value="done" {% if type=='done' %}selected{% endif %}>done</option>
+        </select>
+        <input type="text" name="text" placeholder="Поиск по тексту сообщения" value="{{ request.query_params.get('text', '') }}">
+        <input type="date" name="created_at_from" value="{{ request.query_params.get('created_at_from', '') }}" title="Сообщения с даты">
+        <input type="date" name="created_at_to" value="{{ request.query_params.get('created_at_to', '') }}" title="Сообщения до даты">
+        <label for="limit" class="visually-hidden">Лимит</label>
+        <input type="number" id="limit" name="limit" min="1" max="1000" value="{{ limit or 100 }}" style="width:80px;" title="Лимит сообщений">
+        <button type="submit">Фильтр</button>
+        <a href="/logs" style="margin-left:12px;">Сбросить</a>
+        <a href="/" style="margin-left:24px;">На главную</a>
+    </form>
+    <!-- Описание фильтров -->
+    <div style="color:#888;font-size:0.95em;margin-bottom:12px;">
+        Можно фильтровать по тексту сообщения, типу, дате.<br>
+        Пример: "ошибка" — покажет все error-сообщения с этим словом.
+    </div>
+    <div style="margin-bottom:16px;">
+        <a href="#" id="export-logs-csv" class="btn">Экспорт логов (CSV)</a>
+        <span style="color:#888;font-size:0.95em;margin-left:12px;">Экспортирует только отфильтрованные логи</span>
+    </div>
+    <table id="log-table">
+        <tr>
+            <th>Время</th>
+            <th>Сервер</th>
+            <th>Устройство</th>
+            <th>Тип</th>
+            <th>Сообщение</th>
+        </tr>
+        {% for m in messages %}
+        <tr>
+            <td>{{ m.created_at }}</td>
+            <td>{{ m.server_id }}</td>
+            <td>{{ m.device_id }}</td>
+            <td class="type-{{ m.type if m.type in ['log','error','alert','info','done'] else 'other' }}">{{ m.type }}</td>
+            <td>{{ m.message }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% if not messages %}
+    <div style="color:#888;margin-top:32px;">Нет сообщений по выбранным фильтрам.</div>
+    {% endif %}
+</div>
+<script>
+(function() {
+    let wsProto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    let wsUrl = wsProto + '://' + window.location.host + '/ws/logs';
+    let table = document.getElementById('log-table');
+    let scrollToBottom = function() {
+        window.scrollTo(0, document.body.scrollHeight);
+    };
+    try {
+        let ws = new WebSocket(wsUrl);
+        ws.onmessage = function(event) {
+            let msg = JSON.parse(event.data);
+            let tr = document.createElement('tr');
+            let typeClass = ['log','error','alert','info','done'].includes(msg.type) ? 'type-' + msg.type : 'type-other';
+            tr.innerHTML = `<td>${msg.created_at}</td><td>${msg.server_id}</td><td>${msg.device_id}</td><td class='${typeClass}'>${msg.type}</td><td>${msg.message}</td>`;
+            table.appendChild(tr);
+            scrollToBottom();
+        };
+    } catch (e) { /* ignore */ }
+
+    function buildExportUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return '/export/logs?' + params.toString();
+    }
+    document.getElementById('export-logs-csv').href = buildExportUrl();
+})();
+</script>
+</body>
+</html> 

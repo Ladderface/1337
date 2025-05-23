@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ADB Status</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>ADB статус</h1>
+    <h2>Устройства</h2>
+    <pre>{% for line in adb_devices %}{{ line }}
+{% endfor %}</pre>
+    <h2>ADB Logcat (последние 50 строк)</h2>
+    <pre style="max-height:300px;overflow:auto;background:#222;color:#eee;padding:10px;">{% for line in adb_log %}{{ line }}
+{% endfor %}</pre>
+    <div style="margin-top:40px;">
+        <a href="/">На главную</a>
+    </div>
+</div>
+</body>
+</html> 

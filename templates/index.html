@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ADB Device Manager — Всё в одном</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body { background: #f8f8fa; }
+        .tab-bar { display: flex; gap: 0; border-bottom: 2px solid #eee; margin-bottom: 24px; }
+        .tab-btn { background: none; border: none; padding: 16px 28px; font-size: 1.13em; color: #555; cursor: pointer; border-radius: 10px 10px 0 0; margin-right: 2px; transition: background 0.2s, color 0.2s; }
+        .tab-btn.active { background: #fff; color: #0077cc; border-bottom: 2px solid #0077cc; font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .section-title { margin-top: 0; color: #2a2a6a; }
+        .save-btn { background: #0077cc; color: #fff; border: none; border-radius: 6px; padding: 8px 22px; font-size: 1em; margin-top: 10px; cursor: pointer; }
+        .save-btn:hover { background: #005fa3; }
+        .textarea-cfg { width: 100%; min-height: 320px; font-family: monospace; font-size: 15px; border-radius: 8px; border: 1.5px solid #ccc; padding: 10px; background: #f8f8fa; }
+        .cli-box { background: #222; color: #eee; border-radius: 8px; padding: 12px; min-height: 180px; font-family: monospace; font-size: 15px; margin-bottom: 10px; max-height: 300px; overflow-y: auto; }
+        .cli-input { width: 100%; font-size: 15px; border-radius: 6px; border: 1.5px solid #ccc; padding: 8px; background: #f8f8fa; color: #222; }
+        .gallery { display: flex; flex-wrap: wrap; gap: 18px; }
+        .gallery-item { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 10px; width: 220px; }
+        .gallery-img { width: 200px; max-height: 140px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 6px; animation: fadein 0.7s; }
+        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+        .gallery-time { font-size: 0.95em; color: #888; }
+        .device-grid { display: flex; flex-wrap: wrap; gap: 32px; justify-content: flex-start; }
+        .device-card { background: #fff; border-radius: 16px; box-shadow: 0 4px 24px #0077cc22, 0 1.5px 6px #0001; padding: 22px 18px 18px 18px; width: 340px; min-height: 340px; transition: box-shadow 0.2s, transform 0.2s; position: relative; display: flex; flex-direction: column; align-items: center; }
+        .device-card:hover { box-shadow: 0 8px 32px #0077cc33, 0 2px 8px #0002; transform: translateY(-2px) scale(1.02); }
+        .device-id { font-weight: bold; color: #2a2a6a; font-size: 1.18em; margin-bottom: 2px; letter-spacing: 0.5px; }
+        .device-status { font-size: 1.05em; margin-bottom: 10px; font-weight: 500; }
+        .device-status.online { color: #0a0; }
+        .device-status.offline { color: #c00; }
+        .device-status.running { color: #0077cc; }
+        .device-status.paused { color: orange; }
+        .device-status.stopped { color: #888; }
+        .device-screenshot { width: 100%; max-width: 290px; max-height: 180px; border-radius: 10px; border: 1.5px solid #e0e0e0; margin-bottom: 12px; transition: box-shadow 0.2s; box-shadow: 0 2px 12px #0077cc11; animation: fadein 0.7s; background: #f8f8fa; }
+        .device-actions { margin-top: 8px; display: flex; gap: 12px; }
+        .history-link { font-size: 1em; color: #0077cc; text-decoration: underline; cursor: pointer; font-weight: 500; }
+        .scan-btn { background: linear-gradient(90deg,#0077cc 60%,#00bfff 100%); color: #fff; border: none; border-radius: 8px; padding: 12px 28px; font-size: 1.13em; margin-bottom: 28px; cursor: pointer; transition: background 0.2s, box-shadow 0.2s; box-shadow: 0 2px 8px #0077cc22; }
+        .scan-btn:hover { background: linear-gradient(90deg,#005fa3 60%,#00bfff 100%); box-shadow: 0 4px 16px #0077cc33; }
+        .scan-status { margin-left: 18px; font-size: 1em; color: #0077cc; }
+        .no-screenshot { height:180px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:1.1em;background:#f8f8fa;border-radius:10px;border:1.5px dashed #e0e0e0;margin-bottom:12px; }
+        @media (max-width: 900px) { .device-card { width: 98vw; min-width: 0; } .device-grid { gap: 18px; } }
+        .button-grid { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 18px; }
+        .action-btn { background: linear-gradient(90deg,#0077cc 60%,#00bfff 100%); color: #fff; border: none; border-radius: 10px; padding: 18px 36px; font-size: 1.18em; margin-bottom: 8px; cursor: pointer; box-shadow: 0 2px 8px #0077cc22; transition: background 0.2s, box-shadow 0.2s, transform 0.1s; display: flex; align-items: center; gap: 10px; }
+        .action-btn:hover { background: linear-gradient(90deg,#005fa3 60%,#00bfff 100%); box-shadow: 0 4px 16px #0077cc33; transform: scale(1.04); }
+        .btn-icon { font-size: 1.3em; }
+        .status-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
+        .status-dot.running { background: #0a0; animation: pulse 1.2s infinite; }
+        .status-dot.paused { background: orange; }
+        .status-dot.stopped { background: #888; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 #0a0a; } 70% { box-shadow: 0 0 0 8px #0a0a00; } 100% { box-shadow: 0 0 0 0 #0a0a; } }
+        #notify { position: fixed; top: 30px; right: 30px; background: #fff; color: #222; border-radius: 10px; box-shadow: 0 2px 12px #0077cc22; padding: 18px 32px; font-size: 1.13em; z-index: 9999; display: none; }
+        .refresh-btn { background: #eee; color: #0077cc; border: none; border-radius: 8px; padding: 8px 22px; font-size: 1em; margin-bottom: 18px; cursor: pointer; transition: background 0.2s; }
+        .refresh-btn:hover { background: #d0eaff; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 style="margin-bottom:18px;">ADB Device Manager — Всё в одном</h1>
+    <div class="tab-bar" role="tablist">
+        <div class="tab-btn active" role="tab" tabindex="0" aria-selected="true" onclick="showTab('monitor')">🖥️ Мониторинг</div>
+        <div class="tab-btn" role="tab" tabindex="0" aria-selected="false" onclick="showTab('settings')">⚙️ Настройки</div>
+        <div class="tab-btn" role="tab" tabindex="0" aria-selected="false" onclick="showTab('logs')">📋 Логи</div>
+        <div class="tab-btn" role="tab" tabindex="0" aria-selected="false" onclick="showTab('cli')">💻 Web-CLI</div>
+        <div class="tab-btn" role="tab" tabindex="0" aria-selected="false" onclick="showTab('adb')">🔌 ADB/API</div>
+        <div class="tab-btn" role="tab" tabindex="0" aria-selected="false" onclick="showTab('history')">🖼️ История скринов</div>
+        <div class="tab-btn" role="tab" tabindex="0" aria-selected="false" onclick="showTab('buttons')">🚀 Кнопки/Сценарии</div>
+    </div>
+    <div id="tab-monitor" class="tab-content active">
+        <!-- Мониторинг устройств (плитки) -->
+        <button class="scan-btn" onclick="scanAdb()">🔍 Сканировать ADB</button><span id="scan-status" class="scan-status"></span>
+        <div class="device-grid">
+            {% for dev in devices %}
+            <div class="device-card">
+                <div class="device-id">{{ dev.device_id }}</div>
+                <div class="device-status {{ dev.state }}">
+                    {% if dev.state == 'running' %}🟢{% elif dev.state == 'paused' %}🟡{% elif dev.state == 'stopped' %}🔴{% else %}⚪{% endif %}
+                    {{ dev.state|capitalize }}
+                </div>
+                <span class="status-dot {{ dev.state }}"></span>
+                {% if device_screens[dev.device_id] %}
+                    <img src="/screenshots/monitor/{{ device_screens[dev.device_id] }}?t={{ now() }}" class="device-screenshot" id="img-{{ dev.device_id|replace(':','_') }}" alt="Скриншот {{ dev.device_id }}">
+                {% else %}
+                    <div class="no-screenshot">Нет скриншота</div>
+                {% endif %}
+                <div class="device-actions">
+                    <a class="history-link" href="#" onclick="showHistory('{{ dev.device_id }}');return false;">🖼️ История скринов</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div style="margin-bottom:12px;"><button class="refresh-btn" onclick="refreshMonitor()">🔄 Обновить</button></div>
+    </div>
+    <div id="tab-settings" class="tab-content">
+        <h2 class="section-title">Настройки (config.yaml)</h2>
+        <textarea id="cfg-text" class="textarea-cfg"></textarea><br>
+        <button class="save-btn" onclick="saveConfig()">Сохранить</button>
+        <span id="cfg-status"></span>
+    </div>
+    <div id="tab-logs" class="tab-content">
+        <h2 class="section-title">Логи</h2>
+        <div id="logbox" class="cli-box">Загрузка...</div>
+    </div>
+    <div id="tab-cli" class="tab-content">
+        <h2 class="section-title">Web-CLI</h2>
+        <div id="cli-output" class="cli-box"></div>
+        <input id="cli-input" class="cli-input" placeholder="Введите команду..." onkeydown="if(event.key==='Enter'){sendCli();}">
+    </div>
+    <div id="tab-adb" class="tab-content">
+        <h2 class="section-title">ADB статус и API</h2>
+        <div id="adb-devices"></div>
+        <h3>ADB Logcat (последние 50 строк)</h3>
+        <div id="adb-log" class="cli-box"></div>
+        <h3>REST API</h3>
+        <a href="/docs" target="_blank">OpenAPI /docs</a>
+    </div>
+    <div id="tab-history" class="tab-content">
+        <h2 class="section-title">История скринов</h2>
+        <div id="history-content">Выберите устройство в мониторинге</div>
+    </div>
+    <div id="tab-buttons" class="tab-content">
+        <h2 class="section-title">🚀 Кнопки/Сценарии</h2>
+        <div class="button-grid">
+            {% for btn in buttons %}
+            <button class="action-btn" onclick="runButton('{{ btn.name }}')">
+                <span class="btn-icon">🚀</span> {{ btn.label or btn.name }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+<div id="notify"></div>
+<!-- Модальное окно выбора действия после сценария -->
+<div id="scenario-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#0005;z-index:10000;align-items:center;justify-content:center;">
+  <div style="background:#fff;padding:32px 28px;border-radius:16px;box-shadow:0 4px 32px #0077cc33;min-width:320px;max-width:90vw;">
+    <div style="font-size:1.18em;font-weight:bold;margin-bottom:18px;">Сценарий успешно запущен!</div>
+    <div style="margin-bottom:18px;">Что сделать дальше?</div>
+    <button onclick="closeScenarioModal();showTab('monitor');" style="margin-right:12px;padding:10px 22px;border-radius:8px;border:none;background:#0077cc;color:#fff;font-size:1em;">🖥️ Мониторинг</button>
+    <button onclick="closeScenarioModal();showTab('logs');" style="margin-right:12px;padding:10px 22px;border-radius:8px;border:none;background:#2a2a6a;color:#fff;font-size:1em;">📋 Логи</button>
+    <button onclick="closeScenarioModal();showTab('history');" style="padding:10px 22px;border-radius:8px;border:none;background:#00bfff;color:#fff;font-size:1em;">🖼️ История скринов</button>
+  </div>
+</div>
+<script>
+// --- Вкладки ---
+function showTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn=>{
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected','false');
+    });
+    document.querySelectorAll('.tab-content').forEach(tab=>tab.classList.remove('active'));
+    let btn = document.querySelector('.tab-btn[onclick*="'+tab+'"],.tab-btn[onclick*="'+tab.charAt(0).toUpperCase()+tab.slice(1)+'"]');
+    if(btn) { btn.classList.add('active'); btn.setAttribute('aria-selected','true'); }
+    document.getElementById('tab-'+tab).classList.add('active');
+}
+// --- Мониторинг ---
+function scanAdb() {
+    document.getElementById('scan-status').textContent = 'Сканирование...';
+    fetch('/scan_adb', {method:'POST'}).then(r=>r.json()).then(d=>{
+        document.getElementById('scan-status').textContent = 'Готово! Обновите страницу через 10-20 сек.';
+    });
+}
+function reloadScreens() {
+    document.querySelectorAll('.device-screenshot').forEach(img => {
+        img.src = img.src.replace(/\?.*$/, '') + '?t=' + Date.now();
+    });
+    setTimeout(reloadScreens, 30000);
+}
+window.onload = reloadScreens;
+// --- Настройки (config.yaml) ---
+fetch('/config.yaml').then(r=>r.text()).then(t=>{document.getElementById('cfg-text').value=t;});
+function saveConfig() {
+    fetch('/config.yaml', {method:'POST',body:document.getElementById('cfg-text').value,headers:{'Content-Type':'text/plain'}})
+    .then(r=>r.text()).then(t=>{document.getElementById('cfg-status').textContent='Сохранено!';setTimeout(()=>{document.getElementById('cfg-status').textContent='';},2000);});
+}
+// --- Логи (websocket) ---
+function updateLogs() {
+    let ws = new WebSocket('ws://' + window.location.host + '/ws/logs');
+    ws.onmessage = function(event) {
+        document.getElementById('logbox').textContent = event.data;
+    };
+    ws.onclose = function() { setTimeout(updateLogs, 2000); };
+}
+updateLogs();
+// --- CLI ---
+let cliWs = null;
+function sendCli() {
+    let input = document.getElementById('cli-input');
+    let out = document.getElementById('cli-output');
+    if(!cliWs || cliWs.readyState!==1) {
+        cliWs = new WebSocket('ws://' + window.location.host + '/ws/cli');
+        cliWs.onmessage = function(event) { out.textContent += event.data+'\n'; out.scrollTop = out.scrollHeight; };
+        cliWs.onopen = function() { cliWs.send(input.value); };
+        cliWs.onclose = function() { setTimeout(()=>{cliWs=null;},2000); };
+    } else {
+        cliWs.send(input.value);
+    }
+    out.textContent += '> '+input.value+'\n';
+    input.value = '';
+}
+// --- ADB статус и API ---
+function loadAdb() {
+    fetch('/adb').then(r=>r.text()).then(html=>{
+        let parser = new DOMParser();
+        let doc = parser.parseFromString(html, 'text/html');
+        document.getElementById('adb-devices').innerHTML = doc.querySelector('pre').outerHTML;
+        document.getElementById('adb-log').innerHTML = doc.querySelectorAll('pre')[1].innerHTML;
+    });
+}
+// --- История скринов ---
+function showHistory(device_id) {
+    fetch('/history/'+device_id).then(r=>r.text()).then(html=>{
+        document.getElementById('history-content').innerHTML = html.match(/<div class="gallery">([\s\S]*?)<\/div>/)[0];
+        showTab('history');
+    });
+}
+// --- Автозагрузка ADB при открытии вкладки ---
+document.querySelector('.tab-btn[onclick*="adb"]').addEventListener('click',loadAdb);
+function showNotify(msg, ok=true) {
+    let n = document.getElementById('notify');
+    n.textContent = msg;
+    n.style.background = ok ? '#eaffea' : '#ffeaea';
+    n.style.color = ok ? '#0a0' : '#c00';
+    n.style.display = 'block';
+    setTimeout(()=>{n.style.display='none';}, 2500);
+}
+function showScenarioModal() {
+    document.getElementById('scenario-modal').style.display = 'flex';
+}
+function closeScenarioModal() {
+    document.getElementById('scenario-modal').style.display = 'none';
+}
+function runButton(name) {
+    var btn = Array.from(document.querySelectorAll('.action-btn')).find(b=>b.textContent.includes(name));
+    if(btn) {
+        btn.disabled = true;
+        let orig = btn.innerHTML;
+        btn.innerHTML = '<span class="btn-icon">⏳</span> Выполняется...';
+    }
+    fetch('/buttons/'+name+'/run', {method:'POST'})
+    .then(r=>r.json()).then(d=>{
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="btn-icon">🚀</span> '+name;
+        }
+        if(d.result) {
+            showNotify('Сценарий запущен: '+name, true);
+            showScenarioModal();
+        } else {
+            showNotify('Ошибка запуска: '+(d.detail||'Неизвестно'), false);
+        }
+        if(d.status) updateDeviceStatus(d.status);
+    }).catch(e=>{
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="btn-icon">🚀</span> '+name;
+        }
+        showNotify('Ошибка запуска: '+e, false);
+    });
+}
+function updateDeviceStatus(status) {
+    if(!status) return;
+    document.querySelectorAll('.device-card').forEach(card=>{
+        let id = card.querySelector('.device-id').textContent;
+        let st = status.find(s=>s.device_id===id);
+        if(st) {
+            let el = card.querySelector('.device-status');
+            el.textContent = st.state.charAt(0).toUpperCase()+st.state.slice(1);
+            el.className = 'device-status '+st.state;
+            let dot = card.querySelector('.status-dot');
+            if(dot) dot.className = 'status-dot '+st.state;
+        }
+    });
+}
+// Кнопка обновить для мониторинга
+function refreshMonitor() { location.reload(); }
+</script>
+</body>
+</html> 
